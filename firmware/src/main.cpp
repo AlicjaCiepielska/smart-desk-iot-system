@@ -1,85 +1,74 @@
 
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_BME280.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
 
-// Adresy czujnikow
-const uint8_t BH1750_ADDR = 0x23;
-const uint8_t BME280_ADDR = 0x76;
+// Piny sterujace ekranem
+#define TFT_CS  27
+#define TFT_DC  26
+#define TFT_RST 25
 
-// Tworzymy obiekt obslugujacy BME280
-Adafruit_BME280 bme;
-
-bool bmeReady = false;
+// Tworzymy obiekt wyswietlacza
+Adafruit_ST7789 tft = Adafruit_ST7789(
+    TFT_CS, TFT_DC, TFT_RST
+);
 
 void setup() {
     Serial.begin(115200);
     delay(1000);
 
-    // I2C: SDA = 21, SCL = 22
-    Wire.begin(21, 22);
+    Serial.println("Uruchamianie ST7789...");
 
-    Serial.println("SMART DESK - START");
+    // Inicjalizacja wyswietlacza 240x320
+    // ESP32 korzysta z SPI:
+    // SCK = GPIO18, MOSI = GPIO23
+    tft.init(240, 320);
 
-    // Uruchamiamy BME280
-    bmeReady = bme.begin(BME280_ADDR, &Wire);
+    // Obracamy obraz do poziomu
+    tft.setRotation(1);
 
-    if (bmeReady) {
-        Serial.println("BME280: OK");
-    } else {
-        Serial.println("BME280: BLAD");
-    }
+    // TEST 1 - czerwony ekran
+    tft.fillScreen(ST77XX_RED);
+    delay(1000);
 
-    // Uruchamiamy pomiar swiatla BH1750
-    Wire.beginTransmission(BH1750_ADDR);
-    Wire.write(0x10);
+    // TEST 2 - zielony ekran
+    tft.fillScreen(ST77XX_GREEN);
+    delay(1000);
 
-    if (Wire.endTransmission() == 0) {
-        Serial.println("BH1750: OK");
-    } else {
-        Serial.println("BH1750: BLAD");
-    }
+    // TEST 3 - niebieski ekran
+    tft.fillScreen(ST77XX_BLUE);
+    delay(1000);
 
-    delay(200);
+    // TEST 4 - nasz pierwszy interfejs
+    // Tworzymy pastelowy roz
+    uint16_t pink = tft.color565(255, 205, 225);
+
+    tft.fillScreen(pink);
+
+    // Bialy panel
+    tft.fillRoundRect(
+        20, 20, 280, 200, 15, ST77XX_WHITE
+    );
+
+    // Glowny napis
+    tft.setTextColor(ST77XX_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(65, 75);
+    tft.println("SMART DESK");
+
+    // Podpis
+    tft.setTextSize(2);
+    tft.setCursor(90, 130);
+    tft.println("HELLO!");
+
+    tft.setTextSize(1);
+    tft.setCursor(92, 175);
+    tft.println("ST7789 TEST OK");
+
+    Serial.println("Wyslano obraz do ST7789!");
 }
 
 void loop() {
-    Serial.println("--------------------");
-
-    // Pomiary BME280
-    if (bmeReady) {
-        float temperature = bme.readTemperature();
-        float humidity = bme.readHumidity();
-        float pressure = bme.readPressure() / 100.0f;
-
-        Serial.print("Temperatura: ");
-        Serial.print(temperature);
-        Serial.println(" C");
-
-        Serial.print("Wilgotnosc: ");
-        Serial.print(humidity);
-        Serial.println(" %");
-
-        Serial.print("Cisnienie: ");
-        Serial.print(pressure);
-        Serial.println(" hPa");
-    }
-
-    // Pomiar BH1750
-    int received = Wire.requestFrom(
-        BH1750_ADDR, (uint8_t)2
-    );
-
-    if (received == 2) {
-        uint16_t raw = (Wire.read() << 8) | Wire.read();
-        float lux = raw / 1.2f;
-
-        Serial.print("Swiatlo: ");
-        Serial.print(lux);
-        Serial.println(" lx");
-    } else {
-        Serial.println("Blad odczytu BH1750");
-    }
-
-    delay(2000);
+    // Na razie niczego nie powtarzamy
 }
